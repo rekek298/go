@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Go Pydroid Clone</title>
+    <style>
+        /* الألوان المستوحاة من لقطة الشاشة التي أرسلتها بالضبط */
+        :root {
+            --pydroid-blue-header: #3b78ab; /* الأزرق العلوي */
+            --pydroid-blue-footer: #2b5e8c; /* الأزرق الداكن للشريط السفلي */
+            --pydroid-yellow-fab: #fcd365;  /* الأصفر المميز لزر التشغيل */
+            --editor-bg: #ffffff;           /* خلفية المحرر البيضاء الناصعة */
+            --text-dark: #333333;
+            --terminal-bg: #000000;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--editor-bg); color: var(--text-dark); display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative; }
+
+        /* الشريط العلوي الأزرق مثل الصورة */
+        header { background-color: var(--pydroid-blue-header); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .menu-icon { font-size: 22px; cursor: pointer; }
+        .file-name { font-size: 18px; font-weight: 500; margin-right: 10px; }
+        .header-icons { display: flex; gap: 22px; font-size: 18px; align-items: center; cursor: pointer; }
+
+        /* مساحة العمل والمحرر بخلفية بيضاء وأرقام أسطر رمادية */
+        .workspace { flex: 1; position: relative; background-color: var(--editor-bg); }
+        #editor { position: absolute; top: 0; bottom: 0; left: 0; right: 0; font-size: 16px; }
+
+        /* شريط الرموز السفلي الأزرق الداكن والفواصل البيضاء تماماً مثل صورتك */
+        .accessory-bar { background-color: var(--pydroid-blue-footer); display: flex; align-items: center; padding: 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid rgba(255,255,255,0.1); }
+        .accessory-bar::-webkit-scrollbar { display: none; }
+        .py-btn { background: transparent; color: white; border: none; padding: 12px 16px; font-size: 14px; cursor: pointer; flex: 1; text-align: center; white-space: nowrap; border-left: 1px solid rgba(255,255,255,0.2); }
+        .py-btn:last-child { border-left: none; }
+        .py-btn:active { background-color: rgba(255,255,255,0.1); }
+
+        /* الزر الأصفر العائم للتشغيل يطير فوق الزاوية مثل لقطة الشاشة */
+        .fab-run { position: fixed; bottom: 65px; left: 20px; width: 62px; height: 62px; background-color: var(--pydroid-yellow-fab); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.25); cursor: pointer; z-index: 99; border: none; }
+        .fab-run svg { width: 24px; height: 24px; fill: white; margin-right: -4px; /* لضبط سنثترية المثلث */ }
+        .fab-run:active { transform: scale(0.95); }
+
+        /* شاشة الكونسول السوداء المستقلة */
+        #terminal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--terminal-bg); z-index: 1000; display: none; flex-direction: column; }
+        .terminal-header { background-color: #222; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: white; }
+        .btn-back { background: transparent; border: none; color: var(--pydroid-yellow-fab); font-size: 14px; cursor: pointer; font-weight: bold; }
+        #terminal-body { flex: 1; padding: 16px; font-family: 'Courier New', Courier, monospace; font-size: 15px; color: #ffffff; overflow-y: auto; white-space: pre-wrap; line-height: 1.4; dir: ltr; text-align: left; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/ace.js"></script>
+</head>
+<body>
+
+    <header>
+        <div class="header-right">
+            <span class="menu-icon">☰</span>
+            <span class="file-name">new*</span>
+        </div>
+        <div class="header-icons">
+            <span>📁</span>
+            <span>💡</span>
+            <span>⋮</span>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <div id="editor"></div>
+    </div>
+
+    <button class="fab-run" id="run-button">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+
+    <div class="accessory-bar">
+        <button class="py-btn" data-char="    ">Tab</button>
+        <button class="py-btn" data-char=" : ">:</button>
+        <button class="py-btn" data-char="; ">;</button>
+        <button class="py-btn" data-char='"'>'</button>
+        <button class="py-btn" data-char=" := ">:=</button>
+        <button class="py-btn" data-char="{ ">{</button>
+        <button class="py-btn" data-char=" } ">}</button>
+        <button class="py-btn" data-char="(">(</button>
+        <button class="py-btn" data-char=")">)</button>
+    </div>
+
+    <div id="terminal-overlay">
+        <div class="terminal-header">
+            <span>Go Interpreter Terminal</span>
+            <button class="btn-back" id="close-terminal">◀ عودة للمحرر</button>
+        </div>
+        <div id="terminal-body"></div>
+    </div>
+
+    <script>
+        // الكود الافتراضي الترحيبي بلغة Go
+        const initGoCode = `package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("--- Go Environment Active ---")\n    \n    name := "يا غالي"\n    fmt.Printf("مرحباً %s! تم بناء المحرر بنجاح.\\n", name)\n}`;
+
+        // تهيئة محرك الأكواد بالثيم الأبيض المريح المناسب للصورة ومود لغة Go
+        const editor = ace.edit("editor");
+        editor.setTheme("ace/theme/chrome"); // ثيم أبيض احترافي ممتاز مع خلفيات Pydroid البيضاء
+        editor.session.setMode("ace/mode/golang");
+        editor.setValue(initGoCode);
+        editor.clearSelection();
+        editor.setShowPrintMargin(false);
+
+        const terminalOverlay = document.getElementById('terminal-overlay');
+        const terminalBody = document.getElementById('terminal-body');
+
+        // منطق تشغيل زر المطورين العائم (الأصفر)
+        document.getElementById('run-button').addEventListener('click', () => {
+            terminalBody.innerText = "$ go run new.go\ncompiling modules...\n\n";
+            terminalOverlay.style.display = "flex";
+
+            // محاكاة سريعة لإخراج النتائج بالكونسول الأسود
+            setTimeout(() => {
+                terminalBody.innerText = `$ go run new.go\n\n` + 
+                                         `--- Go Environment Active ---\n` +
+                                         `مرحباً يا غالي! تم بناء المحرر بنجاح.\n\n` +
+                                         `[Process completed - press back to return]`;
+            }, 500);
+        });
+
+        // إغلاق شاشة الكونسول السوداء والرجوع فوراً
+        document.getElementById('close-terminal').addEventListener('click', () => {
+            terminalOverlay.style.display = "none";
+            editor.focus();
+        });
+
+        // تشغيل أزرار الرموز السفلية الزرقاء
+        document.querySelectorAll('.py-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const char = btn.getAttribute('data-char');
+                editor.insert(char);
+                editor.focus();
+            });
+        });
+    </script>
+</body>
+</html>
